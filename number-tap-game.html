@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>숫자 순서 터치 - Number Tap</title>
+<style>
+  :root{
+    --bg:#0d1117;
+    --panel:#151b23;
+    --line:#2b3440;
+    --text:#e6edf3;
+    --sub:#7d8590;
+    --accent:#39ff88;
+    --accent-dim:#1e7a4c;
+    --bad:#ff5c5c;
+    --amber:#ffb454;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'JetBrains Mono','Courier New',monospace;
+    -webkit-tap-highlight-color:transparent;
+    overscroll-behavior:none;
+  }
+  body{
+    display:flex;flex-direction:column;align-items:center;
+    min-height:100vh;
+    padding:16px;
+  }
+  .wrap{width:100%;max-width:480px;display:flex;flex-direction:column;gap:12px;flex:1;}
+
+  .adslot{
+    width:100%;
+    min-height:60px;
+    border:1px dashed var(--line);
+    border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--sub);
+    font-size:11px;
+    letter-spacing:0.05em;
+  }
+
+  .titlebar{
+    display:flex;align-items:baseline;gap:8px;
+    color:var(--sub);font-size:12px;
+  }
+  .titlebar .prompt{color:var(--accent);}
+  h1{
+    font-size:17px;font-weight:600;margin:2px 0 0;color:var(--text);
+    letter-spacing:-0.01em;
+  }
+  .cursor{
+    display:inline-block;width:8px;height:14px;background:var(--accent);
+    animation:blink 1s step-end infinite;vertical-align:-2px;margin-left:2px;
+  }
+  @keyframes blink{50%{opacity:0;}}
+
+  .hud{
+    display:flex;justify-content:space-between;align-items:center;
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    padding:10px 14px;font-size:13px;
+  }
+  .hud .stat{color:var(--sub);}
+  .hud .val{color:var(--accent);font-weight:600;margin-left:4px;}
+  .hud .val.next{color:var(--amber);}
+
+  .board{
+    display:grid;grid-template-columns:repeat(5,1fr);gap:8px;
+    aspect-ratio:1/1;width:100%;
+  }
+  .cell{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:clamp(16px,5.5vw,26px);
+    font-weight:600;
+    color:var(--text);
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:manipulation;
+    transition:transform .08s ease, background .12s ease, border-color .12s ease, color .12s ease;
+  }
+  .cell.done{
+    background:var(--accent-dim);
+    border-color:var(--accent);
+    color:#eafff2;
+    opacity:0.55;
+  }
+  .cell.wrong{
+    animation:shake .25s ease;
+    border-color:var(--bad);
+    color:var(--bad);
+  }
+  .cell:active{transform:scale(0.92);}
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    25%{transform:translateX(-4px);}
+    75%{transform:translateX(4px);}
+  }
+
+  .startscreen,.endscreen{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:28px 20px;text-align:center;display:flex;flex-direction:column;gap:14px;
+  }
+  .startscreen p, .endscreen p{color:var(--sub);font-size:13px;margin:0;line-height:1.6;}
+  .endscreen .big{font-size:15px;color:var(--text);}
+  .endscreen .time{font-size:34px;font-weight:700;color:var(--accent);margin:2px 0;}
+  .endscreen .best{font-size:12px;color:var(--amber);}
+
+  button.primary{
+    background:var(--accent);color:#04140b;border:none;border-radius:8px;
+    padding:13px 18px;font-size:15px;font-weight:700;
+    font-family:inherit;cursor:pointer;
+    letter-spacing:0.01em;
+  }
+  button.primary:active{transform:scale(0.98);}
+
+  .hidden{display:none !important;}
+
+  footer{
+    color:var(--sub);font-size:11px;text-align:center;padding:6px 0 2px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="adslot" id="ad-top">광고 영역 (예: 반응형 디스플레이 광고)</div>
+
+  <div class="titlebar"><span class="prompt">$</span> tap-the-numbers --mode order</div>
+  <h1>숫자 순서 터치<span class="cursor"></span></h1>
+
+  <div class="hud">
+    <span class="stat">TIME<span class="val" id="timeVal">0.0s</span></span>
+    <span class="stat">NEXT<span class="val next" id="nextVal">1</span></span>
+    <span class="stat">BEST<span class="val" id="bestVal">--</span></span>
+  </div>
+
+  <div id="startscreen" class="startscreen">
+    <p>1부터 25까지, 화면에 흩어진 숫자를<br>순서대로 최대한 빠르게 터치하세요.</p>
+    <button class="primary" id="startBtn">게임 시작</button>
+  </div>
+
+  <div id="board" class="board hidden"></div>
+
+  <div id="endscreen" class="endscreen hidden">
+    <div class="big" id="resultLabel">클리어!</div>
+    <div class="time" id="finalTime">0.0s</div>
+    <div class="best" id="bestLabel"></div>
+    <button class="primary" id="retryBtn">다시 하기</button>
+  </div>
+
+  <div class="adslot" id="ad-bottom">광고 영역 (예: 결과 화면 하단 배너)</div>
+
+  <footer>매판 배치가 랜덤으로 바뀝니다 · 개인 최고기록은 이 브라우저에 저장돼요</footer>
+</div>
+
+<script>
+(function(){
+  var GRID = 25;
+  var board = document.getElementById('board');
+  var startscreen = document.getElementById('startscreen');
+  var endscreen = document.getElementById('endscreen');
+  var timeVal = document.getElementById('timeVal');
+  var nextVal = document.getElementById('nextVal');
+  var bestVal = document.getElementById('bestVal');
+  var finalTime = document.getElementById('finalTime');
+  var bestLabel = document.getElementById('bestLabel');
+  var resultLabel = document.getElementById('resultLabel');
+  var startBtn = document.getElementById('startBtn');
+  var retryBtn = document.getElementById('retryBtn');
+
+  var STORAGE_KEY = 'numtap_best_v1';
+  var next = 1;
+  var startTime = 0;
+  var timerId = null;
+  var running = false;
+
+  function loadBest(){
+    var b = parseFloat(localStorage.getItem(STORAGE_KEY));
+    return isNaN(b) ? null : b;
+  }
+  function renderBest(){
+    var b = loadBest();
+    bestVal.textContent = b ? b.toFixed(1) + 's' : '--';
+  }
+  renderBest();
+
+  function shuffle(arr){
+    for (var i = arr.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  function buildBoard(){
+    var nums = [];
+    for (var i = 1; i <= GRID; i++) nums.push(i);
+    shuffle(nums);
+    board.innerHTML = '';
+    nums.forEach(function(n){
+      var cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.textContent = n;
+      cell.dataset.n = n;
+      cell.addEventListener('click', function(){ onTap(cell, n); });
+      board.appendChild(cell);
+    });
+  }
+
+  function onTap(cell, n){
+    if (!running) return;
+    if (n === next){
+      cell.classList.add('done');
+      next++;
+      nextVal.textContent = next <= GRID ? next : '-';
+      if (next > GRID){
+        finish();
+      }
+    } else {
+      cell.classList.remove('wrong');
+      void cell.offsetWidth;
+      cell.classList.add('wrong');
+      setTimeout(function(){ cell.classList.remove('wrong'); }, 250);
+    }
+  }
+
+  function tick(){
+    var elapsed = (Date.now() - startTime) / 1000;
+    timeVal.textContent = elapsed.toFixed(1) + 's';
+  }
+
+  function startGame(){
+    next = 1;
+    nextVal.textContent = '1';
+    timeVal.textContent = '0.0s';
+    buildBoard();
+    startscreen.classList.add('hidden');
+    endscreen.classList.add('hidden');
+    board.classList.remove('hidden');
+    running = true;
+    startTime = Date.now();
+    timerId = setInterval(tick, 100);
+  }
+
+  function finish(){
+    running = false;
+    clearInterval(timerId);
+    var elapsed = (Date.now() - startTime) / 1000;
+    finalTime.textContent = elapsed.toFixed(1) + 's';
+
+    var best = loadBest();
+    var isNewBest = !best || elapsed < best;
+    if (isNewBest){
+      localStorage.setItem(STORAGE_KEY, elapsed.toFixed(2));
+      resultLabel.textContent = '신기록!';
+      bestLabel.textContent = '이전 최고기록을 갱신했어요';
+    } else {
+      resultLabel.textContent = '클리어!';
+      bestLabel.textContent = '최고기록 ' + best.toFixed(1) + 's';
+    }
+    renderBest();
+
+    setTimeout(function(){
+      board.classList.add('hidden');
+      endscreen.classList.remove('hidden');
+    }, 300);
+  }
+
+  startBtn.addEventListener('click', startGame);
+  retryBtn.addEventListener('click', startGame);
+})();
+</script>
+</body>
+</html>
