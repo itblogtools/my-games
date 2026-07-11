@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>랜덤 미니게임 20</title>
+<style>
+  :root{
+    --bg:#0d1117;
+    --panel:#151b23;
+    --line:#2b3440;
+    --text:#e6edf3;
+    --sub:#7d8590;
+    --accent:#39ff88;
+    --accent-dim:#1e7a4c;
+    --bad:#ff5c5c;
+    --amber:#ffb454;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'JetBrains Mono','Courier New',monospace;
+    -webkit-tap-highlight-color:transparent;
+    overscroll-behavior:none;
+  }
+  body{
+    display:flex;flex-direction:column;align-items:center;
+    min-height:100vh;
+    padding:16px;
+  }
+  .wrap{width:100%;max-width:480px;display:flex;flex-direction:column;gap:12px;flex:1;}
+
+  .adslot{
+    width:100%;min-height:60px;border:1px dashed var(--line);border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--sub);font-size:11px;letter-spacing:0.05em;
+  }
+
+  .titlebar{display:flex;align-items:baseline;gap:8px;color:var(--sub);font-size:12px;}
+  .titlebar .prompt{color:var(--accent);}
+  h1{font-size:17px;font-weight:600;margin:2px 0 0;color:var(--text);letter-spacing:-0.01em;}
+  .cursor{display:inline-block;width:8px;height:14px;background:var(--accent);animation:blink 1s step-end infinite;vertical-align:-2px;margin-left:2px;}
+  @keyframes blink{50%{opacity:0;}}
+
+  .hud{
+    display:flex;justify-content:space-between;align-items:center;
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    padding:10px 14px;font-size:13px;
+  }
+  .hud .stat{color:var(--sub);}
+  .hud .val{color:var(--accent);font-weight:600;margin-left:4px;}
+  .hud .val.next{color:var(--amber);}
+
+  .board{
+    display:grid;gap:8px;aspect-ratio:1/1;width:100%;position:relative;
+  }
+  .board.g5{grid-template-columns:repeat(5,1fr);}
+  .board.g4{grid-template-columns:repeat(4,1fr);}
+  .board.g3{grid-template-columns:repeat(3,1fr);}
+  .board.freefield{display:block;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .board.auto-h{aspect-ratio:auto;}
+
+  .cell{
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:clamp(14px,4.6vw,22px);font-weight:600;color:var(--text);
+    user-select:none;-webkit-user-select:none;touch-action:manipulation;
+    transition:transform .08s ease, background .12s ease, border-color .12s ease, color .12s ease;
+  }
+  .cell.done{background:var(--accent-dim);border-color:var(--accent);color:#eafff2;opacity:0.55;}
+  .cell.wrong{animation:shake .25s ease;border-color:var(--bad);color:var(--bad);}
+  .cell:active{transform:scale(0.92);}
+  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:clamp(18px,6vw,28px);user-select:none;-webkit-user-select:none;
+    touch-action:manipulation;transition:transform .1s ease, background .12s ease;
+  }
+  .card.flip{background:#1c2733;border-color:var(--amber);}
+  .card.matched{background:var(--accent-dim);border-color:var(--accent);opacity:0.5;}
+  .card:active{transform:scale(0.94);}
+
+  .target{
+    position:absolute;width:54px;height:54px;border-radius:50%;
+    background:var(--accent);border:2px solid #0d1117;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:700;color:#04140b;
+    touch-action:manipulation;user-select:none;-webkit-user-select:none;
+  }
+  .target:active{transform:scale(0.9);}
+
+  .board.quizboard{
+    display:flex;flex-direction:column;gap:14px;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:22px 18px;
+  }
+  .quiz-prompt{font-size:30px;font-weight:700;text-align:center;padding:10px 0;color:var(--text);word-break:break-word;}
+  .quiz-options{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .quiz-btn{
+    background:var(--bg);border:1px solid var(--line);border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:19px;font-weight:600;padding:18px 8px;color:var(--text);
+    touch-action:manipulation;user-select:none;-webkit-user-select:none;
+    transition:transform .08s ease, border-color .12s ease, color .12s ease;
+  }
+  .quiz-btn.wrong{animation:shake .25s ease;border-color:var(--bad);color:var(--bad);}
+  .quiz-btn:active{transform:scale(0.96);}
+  .circle-wrap{background:transparent;border:none;}
+  .circle-shape{background:var(--accent);border-radius:50%;}
+
+  .reaction-box{
+    width:100%;aspect-ratio:1/1;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;font-weight:700;color:var(--text);touch-action:manipulation;
+    user-select:none;-webkit-user-select:none;
+  }
+  .reaction-box.waiting{background:var(--panel);border:1px solid var(--line);}
+  .reaction-box.go{background:var(--accent);color:#04140b;border:1px solid var(--accent);}
+
+  .simon-cell{background:var(--panel);}
+  .simon-active{background:var(--amber) !important;border-color:var(--amber);}
+
+  .mole-active{background:var(--accent-dim);border-color:var(--accent);}
+
+  .typing-word{font-size:30px;font-weight:700;text-align:center;padding:26px 0 8px;color:var(--text);}
+  .typing-input{
+    width:100%;padding:14px;font-size:20px;text-align:center;
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    color:var(--text);font-family:inherit;
+  }
+
+  .startscreen,.endscreen{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:28px 20px;text-align:center;display:flex;flex-direction:column;gap:14px;
+  }
+  .startscreen p, .endscreen p{color:var(--sub);font-size:13px;margin:0;line-height:1.6;}
+  .endscreen .big{font-size:15px;color:var(--text);}
+  .endscreen .time{font-size:34px;font-weight:700;color:var(--accent);margin:2px 0;}
+  .endscreen .best{font-size:12px;color:var(--amber);}
+  .modelabel{font-size:12px;color:var(--amber);letter-spacing:0.04em;}
+
+  button.primary{
+    background:var(--accent);color:#04140b;border:none;border-radius:8px;
+    padding:13px 18px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:0.01em;
+  }
+  button.primary:active{transform:scale(0.98);}
+
+  .hidden{display:none !important;}
+  footer{color:var(--sub);font-size:11px;text-align:center;padding:6px 0 2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="adslot" id="ad-top">광고 영역 (예: 반응형 디스플레이 광고)</div>
+
+  <div class="titlebar"><span class="prompt">$</span> random-mini-game --pool 20</div>
+  <h1>랜덤 미니게임<span class="cursor"></span></h1>
+
+  <div class="hud">
+    <span class="stat">TIME<span class="val" id="timeVal">0.0s</span></span>
+    <span class="stat" id="goalStat">GOAL<span class="val next" id="goalVal">-</span></span>
+    <span class="stat">BEST<span class="val" id="bestVal">--</span></span>
+  </div>
+
+  <div id="startscreen" class="startscreen">
+    <p>숫자맞추기 · 순발력 퀴즈 · 클릭게임 등 20종 중 하나가 무작위로 나와요.<br>어떤 게임이 걸릴지는 시작해봐야 압니다.</p>
+    <button class="primary" id="startBtn">게임 시작</button>
+  </div>
+
+  <div id="modelabel" class="modelabel hidden"></div>
+  <div id="board" class="board hidden"></div>
+
+  <div id="endscreen" class="endscreen hidden">
+    <div class="big" id="resultLabel">클리어!</div>
+    <div class="time" id="finalTime">0.0s</div>
+    <div class="best" id="bestLabel"></div>
+    <button class="primary" id="retryBtn">다시 하기 (다른 게임일 수 있어요)</button>
+  </div>
+
+  <div class="adslot" id="ad-bottom">광고 영역 (예: 결과 화면 하단 배너)</div>
+
+  <footer>매판 게임 종류와 배치가 랜덤입니다 · 최고기록은 게임별로 이 브라우저에 저장돼요</footer>
+</div>
+
+<script>
+(function(){
+  var board = document.getElementById('board');
+  var startscreen = document.getElementById('startscreen');
+  var endscreen = document.getElementById('endscreen');
+  var modelabel = document.getElementById('modelabel');
+  var timeVal = document.getElementById('timeVal');
+  var goalVal = document.getElementById('goalVal');
+  var bestVal = document.getElementById('bestVal');
+  var finalTime = document.getElementById('finalTime');
+  var bestLabel = document.getElementById('bestLabel');
+  var resultLabel = document.getElementById('resultLabel');
+  var startBtn = document.getElementById('startBtn');
+  var retryBtn = document.getElementById('retryBtn');
+
+  var mode = null;
+  var startTime = 0;
+  var timerId = null;
+  var running = false;
+
+  // ---------- helpers ----------
+  function loadBest(storeKey){
+    var b = parseFloat(localStorage.getItem(storeKey));
+    return isNaN(b) ? null : b;
+  }
+  function renderBest(storeKey){
+    var b = loadBest(storeKey);
+    bestVal.textContent = b ? b.toFixed(1) + 's' : '--';
+  }
+  function shuffle(arr){
+    for (var i = arr.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+  function flashWrong(el){
+    el.classList.remove('wrong');
+    void el.offsetWidth;
+    el.classList.add('wrong');
+    setTimeout(function(){ el.classList.remove('wrong'); }, 250);
+  }
+  function tick(){
+    var elapsed = (Date.now() - startTime) / 1000;
+    timeVal.textContent = elapsed.toFixed(1) + 's';
+  }
+  function startTimer(){
+    startTime = Date.now();
+    timerId = setInterval(tick, 100);
+  }
+  function finish(){
+    running = false;
+    clearInterval(timerId);
+    var elapsed = (Date.now() - startTime) / 1000;
+    finalTime.textContent = elapsed.toFixed(1) + 's';
+
+    var best = loadBest(mode.storeKey);
+    var isNewBest = !best || elapsed < best;
+    if (isNewBest){
+      localStorage.setItem(mode.storeKey, elapsed.toFixed(2));
+      resultLabel.textContent = '신기록! (' + mode.label + ')';
+      bestLabel.textContent = '이전 최고기록을 갱신했어요';
+    } else {
+      resultLabel.textContent = '클리어! (' + mode.label + ')';
+      bestLabel.textContent = '최고기록 ' + best.toFixed(1) + 's';
+    }
+    renderBest(mode.storeKey);
+
+    setTimeout(function(){
+      board.classList.add('hidden');
+      modelabel.classList.add('hidden');
+      endscreen.classList.remove('hidden');
+    }, 300);
+  }
+
+  // ---------- engine: order tap ----------
+  function initOrderTap(items, sequence, gridClass){
+    board.className = 'board ' + gridClass;
+    board.innerHTML = '';
+    var idx = 0;
+    goalVal.textContent = sequence[0];
+    var shuffled = shuffle(items.slice());
+    shuffled.forEach(function(label){
+      var cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.textContent = label;
+      cell.addEventListener('click', function(){
+        if (!running) return;
+        if (String(label) === String(sequence[idx])){
+          cell.classList.add('done');
+          idx++;
+          goalVal.textContent = idx < sequence.length ? sequence[idx] : '-';
+          if (idx >= sequence.length) finish();
+        } else {
+          flashWrong(cell);
+        }
+      });
+      board.appendChild(cell);
+    });
+  }
+
+  // ---------- engine: quiz (N rounds, tap correct option) ----------
+  function initQuiz(rounds, buildRound){
+    board.className = 'board quizboard auto-h';
+    board.innerHTML = '';
+    var round = 0;
+    goalVal.textContent = rounds;
+
+    var promptEl = document.createElement('div');
+    promptEl.className = 'quiz-prompt';
+    board.appendChild(promptEl);
+
+    var optWrap = document.createElement('div');
+    optWrap.className = 'quiz-options';
+    board.appendChild(optWrap);
+
+    function nextRound(){
+      if (round >= rounds){ finish(); return; }
+      var r = buildRound();
+      promptEl.textContent = r.prompt;
+      promptEl.style.color = r.promptColor || '';
+      optWrap.innerHTML = '';
+      r.options.forEach(function(opt, idx){
+        var b = document.createElement('div');
+        b.className = 'quiz-btn';
+        if (opt.size){
+          b.classList.add('circle-wrap');
+          var circle = document.createElement('div');
+          circle.className = 'circle-shape';
+          circle.style.width = opt.size + 'px';
+          circle.style.height = opt.size + 'px';
+          b.appendChild(circle);
+        } else {
+          b.textContent = opt.label;
+        }
+        b.addEventListener('click', function(){
+          if (!running) return;
+          if (idx === r.correctIndex){
+            round++;
+            goalVal.textContent = (rounds - round) > 0 ? (rounds - round) : '-';
+            nextRound();
+          } else {
+            flashWrong(b);
+          }
+        });
+        optWrap.appendChild(b);
+      });
+    }
+    nextRound();
+  }
+
+  // quiz round builders
+  function buildMath(){
+    var a = Math.floor(Math.random()*20)+1;
+    var b = Math.floor(Math.random()*20)+1;
+    var op = Math.random() < 0.5 ? '+' : '-';
+    var answer = op === '+' ? a + b : a - b;
+    var opts = [answer, answer + Math.floor(Math.random()*5) + 1, answer - (Math.floor(Math.random()*5) + 1)];
+    opts = shuffle(opts);
+    return { prompt: a + ' ' + op + ' ' + b + ' = ?', options: opts.map(function(n){ return {label:String(n)}; }), correctIndex: opts.indexOf(answer) };
+  }
+  function buildTrueFalse(){
+    var a = Math.floor(Math.random()*15)+1;
+    var b = Math.floor(Math.random()*15)+1;
+    var real = a + b;
+    var isTrue = Math.random() < 0.5;
+    var shown = isTrue ? real : real + (Math.floor(Math.random()*5) + 1) * (Math.random()<0.5?-1:1);
+    return { prompt: a + ' + ' + b + ' = ' + shown, options: [{label:'참'},{label:'거짓'}], correctIndex: isTrue ? 0 : 1 };
+  }
+  function buildStroop(){
+    var colors = [{name:'빨강',hex:'#ff5c5c'},{name:'파랑',hex:'#4ea1ff'},{name:'초록',hex:'#39ff88'},{name:'노랑',hex:'#ffe066'}];
+    var wordColor = colors[Math.floor(Math.random()*colors.length)];
+    var fontColor = colors[Math.floor(Math.random()*colors.length)];
+    var options = shuffle(colors.slice());
+    var correctIndex = options.findIndex(function(c){ return c.name === fontColor.name; });
+    return { prompt: wordColor.name, promptColor: fontColor.hex, options: options.map(function(c){ return {label:c.name}; }), correctIndex: correctIndex };
+  }
+  function buildFindExtreme(kind){
+    var nums = [];
+    while (nums.length < 4){
+      var n = Math.floor(Math.random()*90)+10;
+      if (nums.indexOf(n) === -1) nums.push(n);
+    }
+    var target = kind === 'big' ? Math.max.apply(null, nums) : Math.min.apply(null, nums);
+    return { prompt: kind === 'big' ? '가장 큰 수는?' : '가장 작은 수는?', options: nums.map(function(n){ return {label:String(n)}; }), correctIndex: nums.indexOf(target) };
+  }
+  function buildSign(){
+    var n = Math.floor(Math.random()*41) - 20;
+    if (n === 0) n = 1;
+    return { prompt: String(n), options: [{label:'양수'},{label:'음수'}], correctIndex: n > 0 ? 0 : 1 };
+  }
+  function buildArrow(){
+    var arrows = ['\u2b06','\u2b07','\u2b05','\u27a1'];
+    var target = arrows[Math.floor(Math.random()*4)];
+    var opts = shuffle(arrows.slice());
+    return { prompt: target, options: opts.map(function(a){ return {label:a}; }), correctIndex: opts.indexOf(target) };
+  }
+  function buildOddOne(){
+    var pool = ['\u25cf','\u25a0','\u25b2','\u25c6','\u2605','\u2665'];
+    var common = pool[Math.floor(Math.random()*pool.length)];
+    var different;
+    do { different = pool[Math.floor(Math.random()*pool.length)]; } while (different === common);
+    var diffPos = Math.floor(Math.random()*4);
+    var arranged = [];
+    for (var i=0;i<4;i++) arranged.push(i === diffPos ? different : common);
+    return { prompt:'다른 것을 찾으세요', options: arranged.map(function(s){ return {label:s}; }), correctIndex: diffPos };
+  }
+  function buildBigCircle(){
+    var sizes = shuffle([28,40,52,64]);
+    var maxSize = Math.max.apply(null, sizes);
+    return { prompt:'가장 큰 원을 탭하세요', options: sizes.map(function(s){ return {label:'', size:s}; }), correctIndex: sizes.indexOf(maxSize) };
+  }
+
+  // ---------- special: click target ----------
+  function initClickTarget(){
+    board.className = 'board freefield';
+    board.innerHTML = '';
+    var total = 15;
+    var hit = 0;
+    goalVal.textContent = total;
+
+    function spawn(){
+      var rect = board.getBoundingClientRect();
+      var size = 54;
+      var maxX = Math.max(rect.width - size, 10);
+      var maxY = Math.max(rect.height - size, 10);
+      var x = Math.random() * maxX;
+      var y = Math.random() * maxY;
+      var t = document.createElement('div');
+      t.className = 'target';
+      t.textContent = 'TAP';
+      t.style.left = x + 'px';
+      t.style.top = y + 'px';
+      t.addEventListener('click', function(){
+        if (!running) return;
+        hit++;
+        goalVal.textContent = (total - hit) > 0 ? (total - hit) : '-';
+        t.remove();
+        if (hit >= total) finish();
+        else spawn();
+      });
+      board.appendChild(t);
+    }
+    spawn();
+  }
+
+  // ---------- special: memory match ----------
+  function initMemory(){
+    board.className = 'board g4';
+    board.innerHTML = '';
+    var symbols = ['\ud83c\udf4e','\ud83c\udf4b','\ud83c\udf47','\ud83c\udf49','\ud83c\udf53','\ud83e\udd5d','\ud83c\udf52','\ud83c\udf51'];
+    var deck = shuffle(symbols.concat(symbols));
+    var flipped = [];
+    var matched = 0;
+    var locked = false;
+    goalVal.textContent = deck.length / 2;
+
+    deck.forEach(function(sym){
+      var card = document.createElement('div');
+      card.className = 'card';
+      card.textContent = '?';
+      card.dataset.sym = sym;
+      card.dataset.open = '0';
+      card.addEventListener('click', function(){
+        if (!running || locked) return;
+        if (card.dataset.open === '1') return;
+        if (flipped.length >= 2) return;
+
+        card.dataset.open = '1';
+        card.textContent = sym;
+        card.classList.add('flip');
+        flipped.push(card);
+
+        if (flipped.length === 2){
+          locked = true;
+          var a = flipped[0], b = flipped[1];
+          if (a.dataset.sym === b.dataset.sym){
+            a.classList.add('matched');
+            b.classList.add('matched');
+            matched++;
+            goalVal.textContent = (deck.length/2 - matched) > 0 ? (deck.length/2 - matched) : '-';
+            flipped = [];
+            locked = false;
+            if (matched === deck.length/2) finish();
+          } else {
+            setTimeout(function(){
+              a.classList.remove('flip'); a.textContent='?'; a.dataset.open='0';
+              b.classList.remove('flip'); b.textContent='?'; b.dataset.open='0';
+              flipped = []; locked = false;
+            }, 550);
+          }
+        }
+      });
+      board.appendChild(card);
+    });
+  }
+
+  // ---------- special: reaction ----------
+  function initReaction(){
+    board.className = 'board auto-h';
+    board.innerHTML = '';
+    var rounds = 3;
+    var round = 0;
+    goalVal.textContent = rounds;
+
+    var box = document.createElement('div');
+    box.className = 'reaction-box waiting';
+    box.textContent = '기다리세요...';
+    board.appendChild(box);
+
+    var ready = false;
+    var timeoutId;
+
+    function nextRound(){
+      if (round >= rounds){ finish(); return; }
+      ready = false;
+      box.className = 'reaction-box waiting';
+      box.textContent = '기다리세요...';
+      var delay = 800 + Math.random()*1800;
+      timeoutId = setTimeout(function(){
+        ready = true;
+        box.className = 'reaction-box go';
+        box.textContent = '지금 클릭!';
+      }, delay);
+    }
+
+    box.addEventListener('click', function(){
+      if (!running) return;
+      if (!ready){
+        clearTimeout(timeoutId);
+        box.textContent = '너무 빨라요! 다시...';
+        flashWrong(box);
+        setTimeout(nextRound, 450);
+        return;
+      }
+      round++;
+      goalVal.textContent = (rounds - round) > 0 ? (rounds - round) : '-';
+      nextRound();
+    });
+
+    nextRound();
+  }
+
+  // ---------- special: simon sequence ----------
+  function initSimon(){
+    board.className = 'board g3';
+    board.innerHTML = '';
+    var targetLen = 6;
+    goalVal.textContent = targetLen;
+
+    var cells = [];
+    for (var i=0;i<9;i++){
+      var c = document.createElement('div');
+      c.className = 'cell simon-cell';
+      board.appendChild(c);
+      cells.push(c);
+    }
+
+    var sequence = [];
+    var playerIdx = 0;
+    var accepting = false;
+
+    function playSequence(){
+      accepting = false;
+      var i = 0;
+      function step(){
+        if (i > 0) cells[sequence[i-1]].classList.remove('simon-active');
+        if (i >= sequence.length){ accepting = true; playerIdx = 0; return; }
+        cells[sequence[i]].classList.add('simon-active');
+        i++;
+        setTimeout(step, 450);
+      }
+      setTimeout(step, 400);
+    }
+    function addStep(){
+      sequence.push(Math.floor(Math.random()*9));
+      playSequence();
+    }
+
+    cells.forEach(function(c, i){
+      c.addEventListener('click', function(){
+        if (!running || !accepting) return;
+        if (i === sequence[playerIdx]){
+          c.classList.add('done');
+          setTimeout(function(){ c.classList.remove('done'); }, 200);
+          playerIdx++;
+          if (playerIdx >= sequence.length){
+            goalVal.textContent = (targetLen - sequence.length) > 0 ? (targetLen - sequence.length) : '-';
+            if (sequence.length >= targetLen) finish();
+            else { accepting = false; setTimeout(addStep, 600); }
+          }
+        } else {
+          flashWrong(c);
+          accepting = false;
+          sequence = [];
+          setTimeout(addStep, 700);
+        }
+      });
+    });
+    addStep();
+  }
+
+  // ---------- special: whack-a-mole ----------
+  function initWhack(){
+    board.className = 'board g4';
+    board.innerHTML = '';
+    var total = 12;
+    var hit = 0;
+    goalVal.textContent = total;
+
+    var cells = [];
+    for (var i=0;i<16;i++){
+      var c = document.createElement('div');
+      c.className = 'cell';
+      board.appendChild(c);
+      cells.push(c);
+    }
+
+    var activeIdx = -1;
+    var moleTimeout;
+
+    function spawn(){
+      if (activeIdx >= 0) cells[activeIdx].classList.remove('mole-active');
+      activeIdx = Math.floor(Math.random()*cells.length);
+      cells[activeIdx].classList.add('mole-active');
+      clearTimeout(moleTimeout);
+      moleTimeout = setTimeout(spawn, 900);
+    }
+    cells.forEach(function(c, i){
+      c.addEventListener('click', function(){
+        if (!running) return;
+        if (i === activeIdx){
+          clearTimeout(moleTimeout);
+          c.classList.remove('mole-active');
+          hit++;
+          goalVal.textContent = (total - hit) > 0 ? (total - hit) : '-';
+          if (hit >= total){ finish(); return; }
+          spawn();
+        }
+      });
+    });
+    spawn();
+  }
+
+  // ---------- special: 8-slide puzzle ----------
+  function initSlide(){
+    board.className = 'board g3';
+    goalVal.textContent = '완성';
+
+    var tiles;
+    function isSolved(t){
+      for (var i=0;i<8;i++) if (t[i] !== i+1) return false;
+      return t[8] === 0;
+    }
+    function isSolvable(t){
+      var arr = t.filter(function(v){ return v !== 0; });
+      var inv = 0;
+      for (var i=0;i<arr.length;i++) for (var j=i+1;j<arr.length;j++) if (arr[i] > arr[j]) inv++;
+      return inv % 2 === 0;
+    }
+    do {
+      tiles = shuffle([1,2,3,4,5,6,7,8,0]);
+    } while (!isSolvable(tiles) || isSolved(tiles));
+
+    function render(){
+      board.innerHTML = '';
+      tiles.forEach(function(v, idx){
+        var c = document.createElement('div');
+        c.className = 'cell';
+        if (v === 0){ c.style.opacity = '0.12'; c.textContent = ''; }
+        else { c.textContent = v; }
+        c.addEventListener('click', function(){
+          if (!running) return;
+          var blankIdx = tiles.indexOf(0);
+          var r1 = Math.floor(idx/3), c1 = idx%3;
+          var r2 = Math.floor(blankIdx/3), c2 = blankIdx%3;
+          if (Math.abs(r1-r2) + Math.abs(c1-c2) === 1){
+            tiles[blankIdx] = tiles[idx];
+            tiles[idx] = 0;
+            render();
+            if (isSolved(tiles)) finish();
+          }
+        });
+        board.appendChild(c);
+      });
+    }
+    render();
+  }
+
+  // ---------- special: typing ----------
+  function initTyping(){
+    board.className = 'board auto-h';
+    board.innerHTML = '';
+    var words = shuffle(['apple','coding','pixel','laptop','wizard','planet','rocket','simple','wonder','cloud']);
+    var rounds = 6;
+    var round = 0;
+    goalVal.textContent = rounds;
+
+    var wordEl = document.createElement('div');
+    wordEl.className = 'typing-word';
+    board.appendChild(wordEl);
+
+    var input = document.createElement('input');
+    input.className = 'typing-input';
+    input.setAttribute('autocomplete','off');
+    input.setAttribute('autocapitalize','off');
+    board.appendChild(input);
+
+    function nextRound(){
+      if (round >= rounds){ finish(); return; }
+      wordEl.textContent = words[round];
+      input.value = '';
+      input.focus();
+    }
+    input.addEventListener('input', function(){
+      if (!running) return;
+      if (input.value.trim().toLowerCase() === words[round]){
+        round++;
+        goalVal.textContent = (rounds - round) > 0 ? (rounds - round) : '-';
+        nextRound();
+      }
+    });
+    nextRound();
+  }
+
+  // ---------- mode registry ----------
+  var MODES = [
+    { key:'numtap', label:'숫자 순서 터치', storeKey:'m_numtap', init:function(){
+      var items=[]; for (var i=1;i<=25;i++) items.push(i);
+      initOrderTap(items, items.slice(), 'g5');
+    }},
+    { key:'reverseorder', label:'숫자 역순 터치', storeKey:'m_reverseorder', init:function(){
+      var items=[]; for (var i=1;i<=25;i++) items.push(i);
+      initOrderTap(items, items.slice().reverse(), 'g5');
+    }},
+    { key:'alphaorder', label:'알파벳 순서 터치', storeKey:'m_alphaorder', init:function(){
+      var items = 'ABCDEFGHIJKLMNOPQRST'.split('');
+      initOrderTap(items, items.slice(), 'g4');
+    }},
+    { key:'evensequence', label:'짝수만 순서대로', storeKey:'m_evenseq', init:function(){
+      var items=[]; for (var i=1;i<=20;i++) items.push(i);
+      var seq = items.filter(function(n){ return n % 2 === 0; });
+      initOrderTap(items, seq, 'g5');
+    }},
+    { key:'mathquiz', label:'빠른 계산', storeKey:'m_mathquiz', init:function(){ initQuiz(8, buildMath); }},
+    { key:'truefalse', label:'참/거짓 판별', storeKey:'m_truefalse', init:function(){ initQuiz(8, buildTrueFalse); }},
+    { key:'stroop', label:'색깔 이름 맞추기', storeKey:'m_stroop', init:function(){ initQuiz(8, buildStroop); }},
+    { key:'findbig', label:'큰 수 찾기', storeKey:'m_findbig', init:function(){ initQuiz(8, function(){ return buildFindExtreme('big'); }); }},
+    { key:'findsmall', label:'작은 수 찾기', storeKey:'m_findsmall', init:function(){ initQuiz(8, function(){ return buildFindExtreme('small'); }); }},
+    { key:'signcheck', label:'양수/음수 판별', storeKey:'m_signcheck', init:function(){ initQuiz(10, buildSign); }},
+    { key:'arrowmatch', label:'화살표 맞추기', storeKey:'m_arrowmatch', init:function(){ initQuiz(10, buildArrow); }},
+    { key:'oddone', label:'다른 것 찾기', storeKey:'m_oddone', init:function(){ initQuiz(8, buildOddOne); }},
+    { key:'bigcircle', label:'큰 원 찾기', storeKey:'m_bigcircle', init:function(){ initQuiz(8, buildBigCircle); }},
+    { key:'clicktarget', label:'빠른 클릭', storeKey:'m_clicktarget', init:initClickTarget },
+    { key:'memory', label:'카드 짝 맞추기', storeKey:'m_memory', init:initMemory },
+    { key:'reaction', label:'반응속도 테스트', storeKey:'m_reaction', init:initReaction },
+    { key:'simon', label:'순서 기억하기', storeKey:'m_simon', init:initSimon },
+    { key:'whack', label:'두더지 잡기', storeKey:'m_whack', init:initWhack },
+    { key:'slide8', label:'8 퍼즐', storeKey:'m_slide8', init:initSlide },
+    { key:'typing', label:'단어 타이핑', storeKey:'m_typing', init:initTyping }
+  ];
+
+  function pickMode(){ return MODES[Math.floor(Math.random() * MODES.length)]; }
+
+  function startGame(){
+    mode = pickMode();
+    modelabel.textContent = '이번 판: ' + mode.label;
+    modelabel.classList.remove('hidden');
+    renderBest(mode.storeKey);
+    timeVal.textContent = '0.0s';
+
+    mode.init();
+
+    startscreen.classList.add('hidden');
+    endscreen.classList.add('hidden');
+    board.classList.remove('hidden');
+    running = true;
+    startTimer();
+  }
+
+  startBtn.addEventListener('click', startGame);
+  retryBtn.addEventListener('click', startGame);
+})();
+</script>
+</body>
+</html>
