@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>IT 도구모음 | 게임부터 개발자 도구까지</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#151b23; --line:#2b3440; --text:#e6edf3; --sub:#7d8590;
+    --accent:#39ff88; --accent-dim:#1e7a4c; --bad:#ff5c5c; --amber:#ffb454; --dark:#04140b;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'JetBrains Mono','Courier New',monospace;}
+  body{display:flex;justify-content:center;padding:20px 16px 60px;}
+  .wrap{width:100%;max-width:760px;display:flex;flex-direction:column;gap:22px;}
+
+  .titlebar{display:flex;align-items:baseline;gap:8px;color:var(--sub);font-size:12px;}
+  .titlebar .prompt{color:var(--accent);}
+  h1{font-size:26px;font-weight:800;margin:6px 0 4px;color:var(--text);letter-spacing:-0.01em;}
+  .desc{color:var(--sub);font-size:14px;line-height:1.6;margin:0 0 4px;}
+
+  .cursor{display:inline-block;width:9px;height:16px;background:var(--accent);animation:blink 1s step-end infinite;vertical-align:-2px;margin-left:2px;}
+  @keyframes blink{50%{opacity:0;}}
+
+  .category{margin-top:8px;}
+  .catlabel{
+    font-size:12px;color:var(--amber);font-weight:700;letter-spacing:0.04em;
+    margin-bottom:12px;padding-bottom:8px;border-bottom:1px dashed var(--line);
+  }
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:520px){.grid{grid-template-columns:1fr;}}
+
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:18px;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:8px;
+    transition:transform .12s ease, border-color .12s ease;
+  }
+  .card:active{transform:scale(0.98);}
+  .card:hover{border-color:var(--accent);}
+
+  .card .icon{
+    width:42px;height:42px;border-radius:10px;background:var(--accent-dim);
+    display:flex;align-items:center;justify-content:center;font-size:20px;
+    border:1px solid var(--accent);
+  }
+  .card .name{font-size:16px;font-weight:700;color:var(--text);}
+  .card .sub{font-size:12px;color:var(--sub);line-height:1.5;}
+  .card .tag{
+    align-self:flex-start;font-size:10px;color:var(--accent);background:rgba(57,255,136,0.08);
+    padding:3px 8px;border-radius:20px;border:1px solid var(--accent-dim);margin-top:2px;
+  }
+
+  footer{color:var(--sub);font-size:11px;text-align:center;padding:20px 0 4px;border-top:1px dashed var(--line);margin-top:10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="titlebar"><span class="prompt">$</span> tool-hub --list-all</div>
+  <h1>IT 도구모음<span class="cursor"></span></h1>
+  <p class="desc">심심할 때 하는 미니게임부터 자주 쓰는 개발자 도구까지, 필요한 걸 골라 바로 써보세요. 전부 브라우저에서 바로 실행되고, 별도 설치는 필요 없습니다.</p>
+
+  <div class="category">
+    <div class="catlabel">🎮 심심할 때</div>
+    <div class="grid">
+      <a class="card" href="mini-games-20.html">
+        <div class="icon">🎲</div>
+        <div class="name">랜덤 미니게임</div>
+        <div class="sub">숫자맞추기·클릭게임·퍼즐 등 20종 중 랜덤</div>
+        <div class="tag">1~3분</div>
+      </a>
+    </div>
+  </div>
+
+  <div class="category">
+    <div class="catlabel">🖥️ PC & 게임</div>
+    <div class="grid">
+      <a class="card" href="pc-game-check.html">
+        <div class="icon">🎯</div>
+        <div class="name">내 PC로 이 게임 돌아갈까?</div>
+        <div class="sub">GPU·CPU·RAM 입력하면 3초 진단, 33종 인기 게임 지원</div>
+        <div class="tag">사양 체크</div>
+      </a>
+    </div>
+  </div>
+
+  <div class="category">
+    <div class="catlabel">🔐 보안 & 프라이버시</div>
+    <div class="grid">
+      <a class="card" href="password-tool.html">
+        <div class="icon">🔑</div>
+        <div class="name">비밀번호 생성기 & 강도체크</div>
+        <div class="sub">조건 설정하면 3초 생성, 기존 비밀번호 진단도 가능</div>
+        <div class="tag">보안</div>
+      </a>
+      <a class="card" href="ip-info-tool.html">
+        <div class="icon">🌐</div>
+        <div class="name">내 IP / 브라우저 정보 확인</div>
+        <div class="sub">IP·위치·통신사·브라우저 정보를 한 번에 조회</div>
+        <div class="tag">네트워크</div>
+      </a>
+    </div>
+  </div>
+
+  <div class="category">
+    <div class="catlabel">👨‍💻 개발자 도구</div>
+    <div class="grid">
+      <a class="card" href="json-formatter.html">
+        <div class="icon">{ }</div>
+        <div class="name">JSON 포맷터 & 검사기</div>
+        <div class="sub">압축된 JSON 정렬, 문법 오류 실시간 검증</div>
+        <div class="tag">개발</div>
+      </a>
+    </div>
+  </div>
+
+  <footer>더 많은 도구가 계속 추가될 예정입니다 · 모든 도구는 브라우저 안에서만 동작하며 입력값을 저장하지 않습니다</footer>
+</div>
+</body>
+</html>
