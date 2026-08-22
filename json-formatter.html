@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>JSON 포맷터 &amp; 유효성 검사기</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#151b23; --line:#2b3440; --text:#e6edf3; --sub:#7d8590;
+    --accent:#39ff88; --accent-dim:#1e7a4c; --bad:#ff5c5c; --amber:#ffb454; --dark:#04140b;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'JetBrains Mono','Courier New',monospace;}
+  body{display:flex;justify-content:center;padding:16px;}
+  .wrap{width:100%;max-width:640px;display:flex;flex-direction:column;gap:14px;}
+
+  .titlebar{display:flex;align-items:baseline;gap:8px;color:var(--sub);font-size:12px;}
+  .titlebar .prompt{color:var(--accent);}
+  h1{font-size:18px;font-weight:700;margin:2px 0 4px;color:var(--text);}
+  .desc{color:var(--sub);font-size:12px;line-height:1.6;margin:0 0 6px;}
+
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;}
+  button{
+    background:var(--panel);border:1px solid var(--line);color:var(--text);
+    border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;cursor:pointer;
+  }
+  button.primary{background:var(--accent);color:var(--dark);border:none;font-weight:700;}
+  button:active{transform:scale(0.97);}
+
+  textarea{
+    width:100%;min-height:220px;background:var(--panel);color:var(--text);
+    border:1px solid var(--line);border-radius:8px;padding:14px;font-size:13px;
+    font-family:'JetBrains Mono','Courier New',monospace;line-height:1.5;resize:vertical;
+  }
+  textarea:focus{outline:none;border-color:var(--accent);}
+
+  .status{
+    display:flex;align-items:center;gap:8px;font-size:13px;padding:10px 14px;border-radius:8px;
+  }
+  .status.ok{background:rgba(57,255,136,0.08);color:var(--accent);border:1px solid var(--accent-dim);}
+  .status.bad{background:rgba(255,92,92,0.08);color:var(--bad);border:1px solid var(--bad);}
+  .status.idle{background:var(--panel);color:var(--sub);border:1px solid var(--line);}
+
+  .outputwrap{position:relative;}
+  .copybtn{
+    position:absolute;top:10px;right:10px;background:var(--panel);border:1px solid var(--line);
+    color:var(--sub);border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer;
+  }
+  .copybtn.copied{color:var(--accent);border-color:var(--accent);}
+
+  .stats{display:flex;gap:16px;font-size:12px;color:var(--sub);flex-wrap:wrap;}
+  .stats b{color:var(--text);}
+
+  label{font-size:12px;color:var(--sub);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="titlebar"><span class="prompt">$</span> json-formatter --run</div>
+  <h1>JSON 포맷터 &amp; 유효성 검사기</h1>
+  <p class="desc">압축된 JSON을 보기 좋게 정렬하거나, 문법 오류가 있는지 바로 확인할 수 있어요.</p>
+
+  <label>입력 (JSON)</label>
+  <textarea id="input" placeholder='{"name":"claude","tags":["ai","assistant"],"active":true}'></textarea>
+
+  <div class="toolbar">
+    <button class="primary" id="formatBtn">정렬(Format)</button>
+    <button id="minifyBtn">압축(Minify)</button>
+    <button id="clearBtn">지우기</button>
+    <button id="sampleBtn">예시 불러오기</button>
+  </div>
+
+  <div class="status idle" id="statusBox">JSON을 입력하고 '정렬' 버튼을 눌러보세요.</div>
+
+  <label>결과</label>
+  <div class="outputwrap">
+    <textarea id="output" readonly placeholder="여기에 결과가 표시됩니다"></textarea>
+    <button class="copybtn" id="copyBtn">복사</button>
+  </div>
+
+  <div class="stats" id="statsBox"></div>
+</div>
+
+<script>
+(function(){
+  var input = document.getElementById('input');
+  var output = document.getElementById('output');
+  var statusBox = document.getElementById('statusBox');
+  var statsBox = document.getElementById('statsBox');
+
+  function countKeys(obj, count){
+    count = count || {n:0};
+    if (obj !== null && typeof obj === 'object'){
+      if (Array.isArray(obj)){
+        obj.forEach(function(v){ countKeys(v, count); });
+      } else {
+        Object.keys(obj).forEach(function(k){
+          count.n++;
+          countKeys(obj[k], count);
+        });
+      }
+    }
+    return count.n;
+  }
+
+  function tryParse(){
+    var raw = input.value.trim();
+    if (!raw){
+      statusBox.className = 'status idle';
+      statusBox.textContent = 'JSON을 입력하고 \'정렬\' 버튼을 눌러보세요.';
+      output.value = '';
+      statsBox.textContent = '';
+      return null;
+    }
+    try {
+      var parsed = JSON.parse(raw);
+      statusBox.className = 'status ok';
+      statusBox.textContent = '✓ 올바른 JSON 형식입니다.';
+      return parsed;
+    } catch (e){
+      statusBox.className = 'status bad';
+      statusBox.textContent = '✗ JSON 오류: ' + e.message;
+      output.value = '';
+      statsBox.textContent = '';
+      return null;
+    }
+  }
+
+  document.getElementById('formatBtn').addEventListener('click', function(){
+    var parsed = tryParse();
+    if (parsed === null) return;
+    var formatted = JSON.stringify(parsed, null, 2);
+    output.value = formatted;
+    var keyCount = countKeys(parsed);
+    statsBox.innerHTML = '글자 수: <b>' + formatted.length + '</b> &nbsp; 키(key) 개수: <b>' + keyCount + '</b>';
+  });
+
+  document.getElementById('minifyBtn').addEventListener('click', function(){
+    var parsed = tryParse();
+    if (parsed === null) return;
+    var minified = JSON.stringify(parsed);
+    output.value = minified;
+    var keyCount = countKeys(parsed);
+    statsBox.innerHTML = '글자 수: <b>' + minified.length + '</b> &nbsp; 키(key) 개수: <b>' + keyCount + '</b>';
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', function(){
+    input.value = '';
+    output.value = '';
+    statsBox.textContent = '';
+    statusBox.className = 'status idle';
+    statusBox.textContent = 'JSON을 입력하고 \'정렬\' 버튼을 눌러보세요.';
+  });
+
+  document.getElementById('sampleBtn').addEventListener('click', function(){
+    input.value = '{"blog":"IT 정보 블로그","tools":["게임","PC사양체크","비밀번호생성기","JSON포맷터"],"visitors":12500,"active":true,"meta":{"lastUpdated":"2026-08-21","tags":["IT","개발","도구"]}}';
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    if (!output.value) return;
+    if (navigator.clipboard){
+      navigator.clipboard.writeText(output.value).then(function(){
+        var btn = document.getElementById('copyBtn');
+        btn.textContent = '복사됨!';
+        btn.classList.add('copied');
+        setTimeout(function(){ btn.textContent = '복사'; btn.classList.remove('copied'); }, 1500);
+      });
+    }
+  });
+})();
+</script>
+</body>
+</html>

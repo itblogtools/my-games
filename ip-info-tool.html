@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>내 IP / 브라우저 정보 확인</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#151b23; --line:#2b3440; --text:#e6edf3; --sub:#7d8590;
+    --accent:#39ff88; --accent-dim:#1e7a4c; --bad:#ff5c5c; --amber:#ffb454; --dark:#04140b;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'JetBrains Mono','Courier New',monospace;}
+  body{display:flex;justify-content:center;padding:16px;}
+  .wrap{width:100%;max-width:520px;display:flex;flex-direction:column;gap:14px;}
+
+  .titlebar{display:flex;align-items:baseline;gap:8px;color:var(--sub);font-size:12px;}
+  .titlebar .prompt{color:var(--accent);}
+  h1{font-size:18px;font-weight:700;margin:2px 0 4px;color:var(--text);}
+  .desc{color:var(--sub);font-size:12px;line-height:1.6;margin:0 0 6px;}
+
+  .ipcard{
+    background:var(--panel);border:1px solid var(--accent);border-radius:10px;
+    padding:24px;text-align:center;
+  }
+  .ipcard .lbl{font-size:12px;color:var(--sub);margin-bottom:8px;}
+  .ipcard .ip{font-size:32px;font-weight:700;color:var(--accent);letter-spacing:0.02em;word-break:break-all;}
+  .ipcard .loc{font-size:13px;color:var(--sub);margin-top:8px;}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px;gap:12px;}
+  .row:last-child{border-bottom:none;}
+  .row .k{color:var(--sub);white-space:nowrap;}
+  .row .v{color:var(--text);text-align:right;word-break:break-word;}
+
+  .sectiontitle{font-size:13px;color:var(--amber);margin:4px 0 -6px;font-weight:700;}
+
+  .loading{color:var(--sub);font-size:13px;text-align:center;padding:20px;}
+
+  .disclaimer{font-size:11px;color:var(--sub);line-height:1.6;border-top:1px dashed var(--line);padding-top:12px;margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="titlebar"><span class="prompt">$</span> whoami --network</div>
+  <h1>내 IP / 브라우저 정보 확인</h1>
+  <p class="desc">현재 접속 중인 IP 주소와 브라우저, 기기 정보를 바로 확인할 수 있어요.</p>
+
+  <div class="ipcard">
+    <div class="lbl">내 공인 IP 주소</div>
+    <div class="ip" id="ipVal">불러오는 중...</div>
+    <div class="loc" id="locVal"></div>
+  </div>
+
+  <div class="sectiontitle">🌐 네트워크 정보</div>
+  <div class="panel" id="networkPanel">
+    <div class="loading">정보를 불러오는 중...</div>
+  </div>
+
+  <div class="sectiontitle">💻 브라우저 / 기기 정보</div>
+  <div class="panel" id="browserPanel"></div>
+
+  <div class="sectiontitle">🖥️ 화면 정보</div>
+  <div class="panel" id="screenPanel"></div>
+
+  <div class="disclaimer">
+    ※ IP 위치 정보는 통신사/네트워크 환경에 따라 실제 위치와 오차가 있을 수 있습니다. 이 도구는 조회한 정보를 서버에 저장하지 않습니다.
+  </div>
+</div>
+
+<script>
+(function(){
+  function addRow(panel, k, v){
+    var row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = '<span class="k">' + k + '</span><span class="v">' + v + '</span>';
+    panel.appendChild(row);
+  }
+
+  // ---------- IP / 위치 정보 ----------
+  fetch('https://ipapi.co/json/')
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+      document.getElementById('ipVal').textContent = data.ip || '확인 불가';
+      var loc = [data.city, data.region, data.country_name].filter(Boolean).join(', ');
+      document.getElementById('locVal').textContent = loc;
+
+      var netPanel = document.getElementById('networkPanel');
+      netPanel.innerHTML = '';
+      addRow(netPanel, 'ISP (통신사)', data.org || '-');
+      addRow(netPanel, '국가', (data.country_name || '-') + ' (' + (data.country_code || '-') + ')');
+      addRow(netPanel, '지역', data.region || '-');
+      addRow(netPanel, '도시', data.city || '-');
+      addRow(netPanel, '시간대', data.timezone || '-');
+    })
+    .catch(function(){
+      document.getElementById('ipVal').textContent = '조회 실패';
+      document.getElementById('networkPanel').innerHTML = '<div class="loading">정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
+    });
+
+  // ---------- 브라우저 정보 ----------
+  var browserPanel = document.getElementById('browserPanel');
+  var ua = navigator.userAgent;
+
+  function detectBrowser(ua){
+    if (ua.indexOf('Edg/') > -1) return 'Microsoft Edge';
+    if (ua.indexOf('Chrome/') > -1 && ua.indexOf('OPR/') === -1) return 'Google Chrome';
+    if (ua.indexOf('Safari/') > -1 && ua.indexOf('Chrome/') === -1) return 'Safari';
+    if (ua.indexOf('Firefox/') > -1) return 'Firefox';
+    if (ua.indexOf('OPR/') > -1) return 'Opera';
+    return '알 수 없음';
+  }
+  function detectOS(ua){
+    if (ua.indexOf('Windows NT') > -1) return 'Windows';
+    if (ua.indexOf('Mac OS X') > -1) return 'macOS';
+    if (ua.indexOf('Android') > -1) return 'Android';
+    if (ua.indexOf('iPhone') > -1 || ua.indexOf('iPad') > -1) return 'iOS';
+    if (ua.indexOf('Linux') > -1) return 'Linux';
+    return '알 수 없음';
+  }
+
+  addRow(browserPanel, '브라우저', detectBrowser(ua));
+  addRow(browserPanel, '운영체제(OS)', detectOS(ua));
+  addRow(browserPanel, '언어 설정', navigator.language || '-');
+  addRow(browserPanel, '쿠키 사용', navigator.cookieEnabled ? '사용 중' : '차단됨');
+  addRow(browserPanel, '온라인 상태', navigator.onLine ? '온라인' : '오프라인');
+
+  // ---------- 화면 정보 ----------
+  var screenPanel = document.getElementById('screenPanel');
+  addRow(screenPanel, '화면 해상도', screen.width + ' × ' + screen.height + ' px');
+  addRow(screenPanel, '브라우저 창 크기', window.innerWidth + ' × ' + window.innerHeight + ' px');
+  addRow(screenPanel, '색상 심도', screen.colorDepth + ' bit');
+  addRow(screenPanel, '기기 픽셀 비율', (window.devicePixelRatio || 1) + 'x');
+})();
+</script>
+</body>
+</html>
